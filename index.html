@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Secure Text Encoder v1.0</title>
+<title>Secure Text Encoder v1.1</title>
 <style>
 body {
   background: #111;
@@ -11,11 +11,6 @@ body {
   padding: 30px;
   max-width: 800px;
   margin: auto;
-}
-h1 {
-  font-weight: normal;
-  border-bottom: 1px solid #444;
-  padding-bottom: 10px;
 }
 textarea, input, select {
   width: 100%;
@@ -36,23 +31,14 @@ button {
 button:hover {
   background: #444;
 }
-small {
-  color: #aaa;
-}
 </style>
 </head>
 <body>
 
-<h1>Secure Text Encoder v1.0</h1>
-<small>
-Experimental time-dependent stream cipher prototype.<br>
-For educational and personal research purposes only.
-</small>
+<h2>Secure Text Encoder v1.1</h2>
 
-<h3>Input Text</h3>
-<textarea id="input" rows="4"></textarea>
+<textarea id="input" rows="4" placeholder="Enter text"></textarea>
 
-<h3>Weather Seed</h3>
 <select id="weather">
   <option value="20000">Clear</option>
   <option value="30000">Cloudy</option>
@@ -62,31 +48,25 @@ For educational and personal research purposes only.
   <option value="50000">Snow</option>
 </select>
 
-<h3>Numeric Seed</h3>
-<input type="number" id="age" placeholder="Enter numeric seed">
+<input type="number" id="age" placeholder="Numeric seed">
 
 <button onclick="encrypt()">Encrypt</button>
 <button onclick="decrypt()">Decrypt</button>
 
-<h3>Output</h3>
 <textarea id="output" rows="4" readonly></textarea>
 
 <script>
-function rotl(x, n) {
-  return ((x << n) | (x >>> (32 - n))) >>> 0;
-}
-
 function step(x) {
   return (1103515245 * x + 12345) & 0x7fffffff;
 }
 
 function deriveShift(r1, r2, r3) {
-  return (r1 ^ r2 ^ r3) % 20;
+  return ((r1 ^ r2 ^ r3) % 20 + 20) % 20; // 負値対策
 }
 
 function process(text, mode) {
-  const weather = parseInt(document.getElementById("weather").value);
-  const age = parseInt(document.getElementById("age").value);
+  const weather = parseInt(document.getElementById("weather").value) || 0;
+  const age = parseInt(document.getElementById("age").value) || 0;
   const now = new Date();
 
   let r1 = weather + age;
@@ -111,18 +91,29 @@ function process(text, mode) {
     result += String.fromCharCode(code);
   }
 
-  return btoa(unescape(encodeURIComponent(result)));
+  return result;
 }
 
 function encrypt() {
   const text = document.getElementById("input").value;
-  document.getElementById("output").value = process(text, "enc");
+  const shifted = process(text, "enc");
+
+  // 暗号化時のみBase64
+  const encoded = btoa(unescape(encodeURIComponent(shifted)));
+
+  document.getElementById("output").value = encoded;
 }
 
 function decrypt() {
   try {
-    const text = decodeURIComponent(escape(atob(document.getElementById("input").value)));
-    document.getElementById("output").value = process(text, "dec");
+    const input = document.getElementById("input").value;
+
+    // Base64を戻す
+    const decoded = decodeURIComponent(escape(atob(input)));
+
+    const original = process(decoded, "dec");
+
+    document.getElementById("output").value = original;
   } catch {
     document.getElementById("output").value = "Invalid input.";
   }
