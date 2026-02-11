@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Secure Text Encoder v1.0</title>
+<style>
+body {
+  background: #111;
+  color: #eee;
+  font-family: Arial, sans-serif;
+  padding: 30px;
+  max-width: 800px;
+  margin: auto;
+}
+h1 {
+  font-weight: normal;
+  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
+}
+textarea, input, select {
+  width: 100%;
+  padding: 8px;
+  margin: 6px 0 15px 0;
+  background: #1c1c1c;
+  color: #eee;
+  border: 1px solid #444;
+}
+button {
+  padding: 8px 16px;
+  margin-right: 10px;
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  cursor: pointer;
+}
+button:hover {
+  background: #444;
+}
+small {
+  color: #aaa;
+}
+</style>
+</head>
+<body>
+
+<h1>Secure Text Encoder v1.0</h1>
+<small>
+Experimental time-dependent stream cipher prototype.<br>
+For educational and personal research purposes only.
+</small>
+
+<h3>Input Text</h3>
+<textarea id="input" rows="4"></textarea>
+
+<h3>Weather Seed</h3>
+<select id="weather">
+  <option value="20000">Clear</option>
+  <option value="30000">Cloudy</option>
+  <option value="40000">Rain</option>
+  <option value="45000">Hail</option>
+  <option value="48000">Sleet</option>
+  <option value="50000">Snow</option>
+</select>
+
+<h3>Numeric Seed</h3>
+<input type="number" id="age" placeholder="Enter numeric seed">
+
+<button onclick="encrypt()">Encrypt</button>
+<button onclick="decrypt()">Decrypt</button>
+
+<h3>Output</h3>
+<textarea id="output" rows="4" readonly></textarea>
+
+<script>
+function rotl(x, n) {
+  return ((x << n) | (x >>> (32 - n))) >>> 0;
+}
+
+function step(x) {
+  return (1103515245 * x + 12345) & 0x7fffffff;
+}
+
+function deriveShift(r1, r2, r3) {
+  return (r1 ^ r2 ^ r3) % 20;
+}
+
+function process(text, mode) {
+  const weather = parseInt(document.getElementById("weather").value);
+  const age = parseInt(document.getElementById("age").value);
+  const now = new Date();
+
+  let r1 = weather + age;
+  let r2 = age * 7 + now.getFullYear();
+  let r3 = now.getHours() * 100 + now.getMinutes() + age;
+
+  let result = "";
+
+  for (let i = 0; i < text.length; i++) {
+    r1 = step(r1);
+    if (i % 5 === 0) r2 = step(r2);
+    if (i % 11 === 0) r3 = step(r3);
+
+    const shift = deriveShift(r1, r2, r3);
+
+    let code = text.charCodeAt(i);
+    if (mode === "enc") {
+      code += shift;
+    } else {
+      code -= shift;
+    }
+    result += String.fromCharCode(code);
+  }
+
+  return btoa(unescape(encodeURIComponent(result)));
+}
+
+function encrypt() {
+  const text = document.getElementById("input").value;
+  document.getElementById("output").value = process(text, "enc");
+}
+
+function decrypt() {
+  try {
+    const text = decodeURIComponent(escape(atob(document.getElementById("input").value)));
+    document.getElementById("output").value = process(text, "dec");
+  } catch {
+    document.getElementById("output").value = "Invalid input.";
+  }
+}
+</script>
+
+</body>
+</html>
